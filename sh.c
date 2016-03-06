@@ -19,15 +19,16 @@ int sh(int argc, char **argv, char **envp) {
   char *prompt = calloc(PROMPTMAX, sizeof(char));
   char *commandLine = calloc(MAX_CANON, sizeof(char));
   char *command, *arg, *commandPath, *p, *owd, *cwd, *pwd;
-//  char **args = calloc(MAXARGS, sizeof(char*));
-  char **args;
-  int uid, i, status, argsct, go = 1;
+
+  char **command_history = malloc(sizeof(*command_history));
+  char **commandAndArgs, **args;
+  int go = 1;
+  int num_history = 0;
+  int uid, i, status, argsct, numTokens;
   struct passwd *password_entry;
   char *homedir;
   struct pathelement *pathList;
 
-  int numTokens;
-  char **commandAndArgs;
 
   uid = getuid();
   password_entry = getpwuid(uid);               /* get passwd info */
@@ -41,8 +42,7 @@ int sh(int argc, char **argv, char **envp) {
   }
   owd = calloc(strlen(cwd) + 1, sizeof(char));
   memcpy(owd, cwd, strlen(cwd));
-//  free(pwd);
-  //prompt[0] = ' '; prompt[1] = '\0';
+
   prompt[0] = '\0';
 
   /* Put PATH into a linked list */
@@ -66,6 +66,13 @@ int sh(int argc, char **argv, char **envp) {
     args = getArgs(commandAndArgs, numTokens);
 
 //printf("commandLine='%s',numTokens='%i',commandAndArgs='%p',command='%s'\n", commandLine, numTokens, commandAndArgs, command);
+
+    if (command != NULL) {
+      num_history++;
+      command_history = (char **) realloc(command_history, (num_history+1)*sizeof(*command_history));
+      command_history[num_history-1] = malloc((strlen(commandLine)+1)*sizeof(char));
+      strcpy(command_history[num_history-1], commandLine);
+    }
 
     /* check for each built in command and implement */
     if (command == NULL) continue;
@@ -104,11 +111,30 @@ int sh(int argc, char **argv, char **envp) {
         free(cwd);
         free(owd);
         free(commandLine);
+        for (i = 0; i < num_history; i++) free(command_history[i]);
+        free(command_history);
         free(prompt);
         exit(status);
       } else printf("mysh: exit: too many arguments\n");
     } else if (strcmp(command, "history") == 0) {				/* history */
+      int n = 10;
+      if (args != NULL) n = atoi(args[0]);
+      if (n > num_history) n = num_history;
+          for (i = num_history - n; i < num_history; i++)
+              printf("\t%i\t%s\n", i+1, command_history[i]);
     } else if (strcmp(command, "kill") == 0) {					/* kill */
+      if (args == NULL) printf("kill: usage: kill [-signum] pid\n");
+      else if (numTokens == 2) {
+        const int pid = atoi(args[0]);
+        if (kill(pid, SIGTERM) == -1)
+            printf("kill: (%i) - No such process\n", pid);
+      } else {
+        for (i = 1; i < numTokens-1; i++) {
+          const int pid = atoi(args[i]);
+          if (kill(pid, atoi(args[1])) == -1)
+              printf("kill: (%i) - No such process\n", pid);
+        }
+      }
     } else if (strcmp(command, "list") == 0) {					/* list */
       if (args == NULL) list(cwd);
       else {
@@ -122,6 +148,7 @@ int sh(int argc, char **argv, char **envp) {
         }
       }
     } else if (strcmp(command, "pid") == 0) {					/* pid */
+      printf("%i\n", getpid());
     } else if (strcmp(command, "printenv") == 0) {				/* printenv */
       if (args == NULL) {
         char **env;
@@ -145,9 +172,11 @@ int sh(int argc, char **argv, char **envp) {
         char **env;
         for (env = envp; *env != 0; env++) printf("%s\n", *env);
       } else if (numTokens == 2) { // one argument, set env variable to blank
-        setenv(args[0], "", 1); // overwrite set
+        int result = setenv(args[0], "", 1); // overwrite set
+printf("Re`sult=%i\n", result);
       } else if (numTokens == 3) { // two arguments, set env variable to value
-        setenv(args[0], args[1], 1); // overwrite set
+        int result = setenv(args[0], args[1], 1); // overwrite set
+printf("Result=%i\n", result);
       } else printf("setenv: Too many arguments.\n"); // too many arguments (0-2)
     } else if (strcmp(command, "where") == 0) {					/* where */
       for (i = 0; i < numTokens-1; i++) where(args[i], pathList);
@@ -167,13 +196,7 @@ int sh(int argc, char **argv, char **envp) {
       //else fprintf(stderr, "%s: Command not found.\n", args[0]);
     }
     freeStringArray(commandAndArgs, numTokens); // freed
-  }
-  freePathList(pathList);
-  free(pwd);
-  free(cwd);
-  free(owd);
-  free(commandLine);
-  free(prompt);
+  }									/* End of control loop */
   return 0;
 } /* sh() */
 

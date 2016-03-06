@@ -1,6 +1,7 @@
-# Testing directory
+# Directory
 /testing/
+/stale/
 
-# Binaries
+# Object Files and Binaries
 /*.o
 /mysh
