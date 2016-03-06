@@ -1,0 +1,6 @@
+# Testing directory
+/testing/
+
+# Binaries
+/*.o
+/mysh
