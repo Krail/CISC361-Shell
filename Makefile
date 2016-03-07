@@ -1,15 +1,21 @@
 # choose your compiler
-CC=gcc -g
-##CC=gcc
-##CC=gcc -Wall
-NO_LINK=-c
+CC	= gcc -g
+	#CC=gcc
+	#CC=gcc -Wall
+NO_LINK	= -c
+	#LIBS	= -L. -lbulitin
 
 
-all: mysh
+all: builtin mysh
+
+
+builtin:
+	cd builtin && $(MAKE)
 
 
 mysh: sh.o get_path.o parseCommandLine.o main.c 
-	$(CC) $^ -o $@
+	cd builtin && $(MAKE)
+	$(CC) $^ builtin/builtin.o -o $@
 #	$(CC) main.c sh.o get_path.o -o mysh
 #	$(CC) main.c sh.o get_path.o bash_getcwd.o -o mysh
 
@@ -25,3 +31,5 @@ parseCommandLine.o: parseCommandLine.c parseCommandLine.h
 
 clean:
 	rm -rf sh.o get_path.o parseCommandLine.o mysh
+	cd builtin && $(MAKE) clean
+

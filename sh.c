@@ -12,6 +12,7 @@
 #include <signal.h>
 
 #include "parseCommandLine.h"
+#include "builtin/alias.h"
 #include "sh.h"
 
 
@@ -25,6 +26,8 @@ int sh(int argc, char **argv, char **envp) {
   int go = 1;
   int num_history = 0;
   int uid, i, status, argsct, numTokens;
+
+  struct alias *alias_head = NULL;
   struct passwd *password_entry;
   char *homedir;
   struct pathelement *pathList;
@@ -69,7 +72,7 @@ int sh(int argc, char **argv, char **envp) {
 
     if (command != NULL) {
       num_history++;
-      command_history = (char **) realloc(command_history, (num_history+1)*sizeof(*command_history));
+      command_history = (char**) realloc(command_history, (num_history+1)*sizeof(*command_history));
       command_history[num_history-1] = malloc((strlen(commandLine)+1)*sizeof(char));
       strcpy(command_history[num_history-1], commandLine);
     }
@@ -77,6 +80,20 @@ int sh(int argc, char **argv, char **envp) {
     /* check for each built in command and implement */
     if (command == NULL) continue;
     else if (strcmp(command, "alias") == 0) {					/* alias */
+      if (args == NULL) printAliasTable(alias_head);
+      else if (numTokens == 2) {
+        char *alias_command = getAlias(alias_head, args[0]);
+        if (alias_command != NULL) printf("%s\n", alias_command);
+      } else {
+        char *alias_command = calloc(MAX_CANON, sizeof(char));
+        strcpy(alias_command, args[1]);
+        for (i = 2; i < numTokens-1; i++) {
+          strcat(alias_command, " ");
+          strcat(alias_command, args[i]);
+        }
+        alias_head = setAlias(alias_head, args[0], alias_command);
+        free(alias_command);
+      }
     } else if (strcmp(command, "cd") == 0) {					/* cd */
       char *twd = calloc(strlen(cwd) + 1, sizeof(char));
       strcpy(twd, cwd);
@@ -114,6 +131,7 @@ int sh(int argc, char **argv, char **envp) {
         for (i = 0; i < num_history; i++) free(command_history[i]);
         free(command_history);
         free(prompt);
+        freeAliasTable(alias_head);
         exit(status);
       } else printf("mysh: exit: too many arguments\n");
     } else if (strcmp(command, "history") == 0) {				/* history */

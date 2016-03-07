@@ -3,5 +3,6 @@
 /stale/
 
 # Object Files and Binaries
-/*.o
+*.o
 /mysh
+
