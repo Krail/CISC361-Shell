@@ -8,6 +8,9 @@
 #include <unistd.h>
 #include <pwd.h>
 #include <dirent.h>
+//#include <sys/select.h>			//
+//#include <sys/time.h>				//
+//#include <poll.h>						//
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <signal.h>
@@ -32,6 +35,13 @@ int sh(int argc, char **argv, char **envp) {
   int go = 1;
   int num_history = 0;
   int uid, i, status, argsct, numTokens;
+
+//	struct pollfd poll = {STDIN_FILENO, POLLIN | POLLPRI};
+//	sigset_t mask;
+//	sigset_t orig_mask;
+//	struct timespec timeout;
+//	timeout.tv_sec = 2;
+//	timeout.tv_nsec = 0;
 
   struct alias *alias_head = NULL;
   struct passwd *password_entry;
@@ -59,27 +69,16 @@ int sh(int argc, char **argv, char **envp) {
 
 //printf("PrintWoringDirectory='%s', OriginalWorkingDirectory='%s'\n", pwd, owd);
 
-	uint8_t do_prompt = 1;
-
   while ( go ) {
     /* print your prompt */
-    if (do_prompt) printf("%s [%s]> ", prompt, cwd);
+		printf("%s [%s]> ", prompt, cwd);
 
-    /* get command line and process */
-    //gets(commandLine); // Look into http://stackoverflow.com/a/21198059 for timeout option
+		/* get command line and process */
     if (fgets(commandLine, MAX_CANON, stdin) == NULL) {
-			do_prompt = 0;
+			printf("\nUse \"exit\" to leave mysh.\n");
 			continue;
 		}
-		do_prompt = 1;
 		commandLine[strlen(commandLine)-1] = '\0'; // Replace newline with null terminator
-	/*		if (strlen(commandLine) == 0) {
-			printf("\n");
-			continue;
-		} else {
-			commandLine[strlen(commandLine)-1] = '\0';
-      for (i = 0; i < strlen(commandLine); i++) if (commandLine[i] == '\04') commandLine[i] = ' ';
-		}*/
 
     // parseCommandLine.h functions
     numTokens = getNumTokens(commandLine);
@@ -87,7 +86,7 @@ int sh(int argc, char **argv, char **envp) {
     command = getCommand(commandAndArgs, numTokens);
     args = getArgs(commandAndArgs, numTokens);
 
-printf("commandLine='%s',numTokens='%i',commandAndArgs='%p',command='%s'\n", commandLine, numTokens, commandAndArgs, command);
+//printf("commandLine='%s',numTokens='%i',commandAndArgs='%p',command='%s'\n", commandLine, numTokens, commandAndArgs, command);
 
     if (command != NULL) {
       num_history++;
@@ -107,11 +106,14 @@ printf("commandLine='%s',numTokens='%i',commandAndArgs='%p',command='%s'\n", com
       } else {
         char *alias_command = calloc(MAX_CANON, sizeof(char));
         strcpy(alias_command, args[1]);
-        for (i = 2; i < numTokens-1; i++) {
+int len = strlen(args[1]);
+				for (i = 2; i < numTokens-1; i++) {
           strcat(alias_command, " ");
           strcat(alias_command, args[i]);
-        }
-        alias_head = setAlias(alias_head, args[0], alias_command);
+len += 1 + strlen(args[i]);
+				}
+printf("Length='%i', MAX_CANON='%i'\n", len, MAX_CANON);
+				alias_head = setAlias(alias_head, args[0], alias_command);
         free(alias_command);
       }
     } else if (strcmp(command, "cd") == 0) {					/* cd */
@@ -128,11 +130,15 @@ printf("commandLine='%s',numTokens='%i',commandAndArgs='%p',command='%s'\n", com
       } else if (strcmp(args[0], "-") == 0) {
         if (pwd == NULL) printf("No previous directory\n");
         else {
-          strcpy(cwd, pwd);
-          strcpy(pwd, twd);
+					if (chdir(pwd) == 0) {
+						strcpy(cwd, pwd);
+						strcpy(pwd, twd);
+					}
         }
+			} else if (numTokens > 2) {
+				printf("%s: Too many arguments.\n", command);
       } else {
-        if (pwd == NULL) pwd = calloc(PATH_MAX+1, sizeof(char));
+				if (pwd == NULL) pwd = calloc(PATH_MAX+1, sizeof(char));
         if (chdir(args[0]) == 0) {
           cwd = getcwd(cwd, PATH_MAX+1);
           strcpy(pwd, twd);
@@ -171,9 +177,12 @@ printf("commandLine='%s',numTokens='%i',commandAndArgs='%p',command='%s'\n", com
         if (kill(pid, SIGTERM) == -1)
             printf("kill: (%i) - No such process\n", pid);
       } else {
-        for (i = 1; i < numTokens-1; i++) {
+				int signum = atoi(args[0]+1);
+//printf("SigNum='%i'\n", signum);
+				if (signum > 31) signum = 0;
+				for (i = 1; i < numTokens-1; i++) {
           const int pid = atoi(args[i]);
-          if (kill(pid, atoi(args[1])) == -1)
+          if (kill(pid, signum) == -1)
               printf("kill: (%i) - No such process\n", pid);
         }
       }
@@ -251,6 +260,9 @@ printf("commandLine='%s',numTokens='%i',commandAndArgs='%p',command='%s'\n", com
 					if (access(command, X_OK) == 0) {
 						// Absolute/relative path - Execute command
 						// do fork(), execve(), and waitpid()...
+//sigemptyset(&mask);
+//sigaddset(&mask, SIGCHLD);
+//if (sigprocmask(SIG_BLOCK, &mask, &orig_mask) < 0) return 1;
 						c_pid = fork();
 						if (c_pid == 0) { // Child process success
 							printf("Executing %s\n", command);
@@ -259,6 +271,17 @@ printf("commandLine='%s',numTokens='%i',commandAndArgs='%p',command='%s'\n", com
 							int status;
 							waitpid(c_pid, &status, 0);
 							if (WEXITSTATUS(status) != 0) printf("%s: Command exited with status: %d\n", command, WEXITSTATUS(status));
+
+//int timeout = 2;
+//int waittime = 0;
+
+//do {
+//	if (sigtimedwait(&mask, NULL, &timeout) < 0) {
+//		printf("errno='%i'\n", errno);
+//	}
+//	break;
+//} while (1);
+//if (waitpid(c_pid, &status, 0) < 0) return 1;
 						} else { // Error forking
 						  printf("%s: Unable to fork child process.\n", command);
 						}

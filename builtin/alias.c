@@ -26,9 +26,9 @@ char* getAlias(struct alias *head, const char *alias_match) {
 struct alias* setAlias(struct alias *head, const char *alias, const char *command) {
   struct alias *node = head;
   struct alias *new_node = malloc(sizeof(struct alias));
-  new_node->alias = malloc(sizeof(alias)+1);
+  new_node->alias = malloc((strlen(alias)+1)*sizeof(char));
   strcpy(new_node->alias, alias);
-  new_node->command = malloc(sizeof(command)+1);
+  new_node->command = malloc((strlen(command)+1)*sizeof(char));
   strcpy(new_node->command, command);
   new_node->next = NULL;
   if (node == NULL) head = new_node;
@@ -57,11 +57,13 @@ struct alias* setAlias(struct alias *head, const char *alias, const char *comman
 
 void freeAliasTable(struct alias *head) {
   struct alias *node = head;
+	struct alias *tmp;
   while (node != NULL) {
     free(node->alias);
     free(node->command);
-    node = node->next;
+		tmp = node->next;
+		free(node);
+    node = tmp;
   }
-  free(head);
 }
 
