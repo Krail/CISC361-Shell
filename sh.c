@@ -23,7 +23,8 @@
 
 
 extern char **environ;
-extern pid_t c_pid;
+extern pid_t c_pid;				// defined in my "./main.c"
+extern int timeout;				// defined in my "./main.c"
 
 int sh(int argc, char **argv, char **envp) {
 	char *prompt = calloc(PROMPTMAX, sizeof(char));
@@ -85,6 +86,8 @@ int sh(int argc, char **argv, char **envp) {
     commandAndArgs = buildStringArray(commandLine, numTokens); // must be freed properly
     command = getCommand(commandAndArgs, numTokens);
     args = getArgs(commandAndArgs, numTokens);
+
+		args = expandWildcards(args);
 
 //printf("commandLine='%s',numTokens='%i',commandAndArgs='%p',command='%s'\n", commandLine, numTokens, commandAndArgs, command);
 
@@ -269,6 +272,8 @@ printf("Length='%i', MAX_CANON='%i'\n", len, MAX_CANON);
 							if (execve(command, commandAndArgs, environ) == -1) printf("%s: Command not found.\n", command);
 						} else if (c_pid > 0) { // Parent process success
 							int status;
+//printf("timeout='%i'\n", timeout);
+							alarm(timeout);
 							waitpid(c_pid, &status, 0);
 							if (WEXITSTATUS(status) != 0) printf("%s: Command exited with status: %d\n", command, WEXITSTATUS(status));
 
@@ -301,6 +306,8 @@ printf("Length='%i', MAX_CANON='%i'\n", len, MAX_CANON);
 						if (execve(commandPath, commandAndArgs, environ) == -1) printf("%s: Command not found.\n", commandPath);
 					} else if (c_pid > 0) { // Parent process success
 						int status;
+//printf("timeout='%i'\n", timeout);
+						alarm(timeout);
 						waitpid(c_pid, &status, 0);
 					  if (WEXITSTATUS(status) != 0) printf("%s: Command exited with status: %d\n", commandPath, WEXITSTATUS(status));
 					} else { // Error forking
@@ -317,6 +324,11 @@ printf("Length='%i', MAX_CANON='%i'\n", len, MAX_CANON);
 } /* sh() */
 
 
+char** expandWildcards(char **args) {
+	if (args == NULL) return NULL;
+	return args;
+}
+
 int isAbsolutePath(char *command) {
   if (command[0] == '/') return 0;
   else if (command[0] == '.') {
@@ -326,7 +338,7 @@ int isAbsolutePath(char *command) {
   return 1;
 }
 
-char *which(char *command, struct pathelement *pathList ) {
+char* which(char *command, struct pathelement *pathList ) {
    /* loop through pathlist until finding command and return it.  Return
    NULL when not found. */
   if (pathList == NULL) return NULL;
