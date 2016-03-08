@@ -65,7 +65,7 @@ char** buildStringArray(char *commandLine, int numTokens) {
   strcpy(commandLineCopy, commandLine);
 
   // ALLOCATE the string array
-  char **commandAndArgs = malloc(numTokens*sizeof(char*));
+  char **commandAndArgs = malloc((numTokens+1)*sizeof(char*));
 
   // ASSIGN deliminator to separate tokens
   char *delim = " ";
@@ -89,6 +89,7 @@ char** buildStringArray(char *commandLine, int numTokens) {
     // GET next token
     token = strtok(NULL, delim);
   }
+	commandAndArgs[numTokens] = 0;
 
   // FREE copy of commandLine parameter
   free(commandLineCopy);
@@ -148,6 +149,6 @@ char ** getArgs(char **commandAndArgs, int numTokens) {
 void freeStringArray(char ** commandAndArgs, int numTokens) {
   if (commandAndArgs == NULL) return;
   int i;
-  for(i = 0; i < numTokens; i++) free(commandAndArgs[i]);
+  for(i = 0; i < numTokens+1; i++) free(commandAndArgs[i]);
   free(commandAndArgs);
 }

@@ -23,7 +23,14 @@ struct pathelement *get_path() {
   path[strlen(p)] = '\0';
 
   p = strtok(path, ":"); 	/* PATH is : delimited */
-  do {		/* loop through the PATH to build a linked list of dirs */
+
+
+	if (p == NULL) {
+		free(path);
+		return NULL;
+	}
+
+	do {		/* loop through the PATH to build a linked list of dirs */
     if ( !pathlist )		/* create head of list */
     {
       tmp = calloc(1, sizeof(struct pathelement));
