@@ -10,6 +10,44 @@
 // http://stackoverflow.com/a/14667564/5171749
 
 
+char** getArgv(char *command_line) {
+	// Definitions
+	const char *deliminator = " ";
+	char *token, *copy_command_line = malloc((strlen(command_line)+1)*sizeof(char));
+
+	strcpy(copy_command_line, command_line);
+	token = strtok(copy_command_line, deliminator);
+
+	if (token == NULL) {	// Not a single token (i.e. no command)
+		free(copy_command_line);
+		return NULL;
+	}
+
+	char **glob_args, **argv = malloc(2*sizeof(char*));
+	int i = 1;
+	glob_t *arg_paths = malloc(sizeof(glob_t));
+
+	argv[0] = malloc((strlen(token)+1)*sizeof(char)); // command is special
+	strcpy(argv[0], command_line);
+	token = strtok(NULL, delim);
+	while (token != NULL) {
+		if (glob(token, 0, NULL, arg_paths) == 0) {
+			for (glob_args = arg_paths->gl_pathv; *glob_args != NULL; glob_args++, i++) {
+				// Args
+				argv = realloc(argv, (i+2)*sizeof(char*));
+				argv[i] = malloc((strlen(*glob_args)+1)*sizeof(char));
+				strcpy(argv[i], *glob_args);
+			}
+			globfree(arg_paths);
+		}
+		token = strtok(NULL, delim);		
+	}
+	argv[i] = NULL;
+	free(copy_command_line); free(); free(arg_paths);
+	return argv;
+}
+
+
 /* Get the number of tokens in the command line string.
  *   Parameters:
  *     string - commandLine
@@ -99,6 +137,32 @@ char** buildStringArray(char *commandLine, int numTokens) {
 }
 
 
+char** expandWildcards(char **commandAndArgs) {
+	char **args_p = commandAndArgs+1;                     // points to first argument
+	char **glob_args;                                     // Glob array pointer
+	char **new_commandAndArgs = malloc(2*sizeof(char*));  // New args to be returne
+  new_commandAndArgs[0] = malloc((strlen(commandAndArgs[0])+1)*sizeof(char));
+  strcpy(new_commandAndArgs[0], commandAndArgs[0]);
+  glob_t *arg_paths = malloc(sizeof(glob_t));           // Returned paths by glob
+  int i = 1;
+  while (*args_p) {
+    if (glob(*args_p, 0, NULL, arg_paths) == 0) { // 0?, NULL?
+      for (glob_args = arg_paths->gl_pathv; *glob_args != NULL; glob_args++, i++) {
+        //printf("NewArg='%s'\n", *glob_args);
+        // Args
+        new_commandAndArgs = realloc(new_commandAndArgs, (i+2)*sizeof(char*));
+        new_commandAndArgs[i] = malloc((strlen(*glob_args)+1)*sizeof(char));
+        strcpy(new_commandAndArgs[i], *glob_args);
+      }
+      globfree(arg_paths);
+    }
+    args_p++;
+  }
+  new_commandAndArgs[i] = 0;
+  return new_commandAndArgs;
+}
+
+
 /* Get the command in commandAndArgs
  *   Parameters:
  *     string[] - commandAndArgs
@@ -152,3 +216,11 @@ void freeStringArray(char ** commandAndArgs, int numTokens) {
   for(i = 0; i < numTokens+1; i++) free(commandAndArgs[i]);
   free(commandAndArgs);
 }
+
+void freeArgv(char **argv) {
+	if (argv == NULL) return;
+	char **argv_p;
+	while (*(argv_p++)) free(*argv_p);
+	free(argv);
+}
+

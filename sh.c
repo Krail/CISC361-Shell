@@ -7,10 +7,8 @@
 #include <limits.h>
 #include <unistd.h>
 #include <pwd.h>
+#include <glob.h>
 #include <dirent.h>
-//#include <sys/select.h>			//
-//#include <sys/time.h>				//
-//#include <poll.h>						//
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <signal.h>
@@ -87,7 +85,7 @@ int sh(int argc, char **argv, char **envp) {
     command = getCommand(commandAndArgs, numTokens);
     args = getArgs(commandAndArgs, numTokens);
 
-		args = expandWildcards(args);
+		char **new_commandAndArgs = expandWildcards(commandAndArgs);
 
 //printf("commandLine='%s',numTokens='%i',commandAndArgs='%p',command='%s'\n", commandLine, numTokens, commandAndArgs, command);
 
@@ -269,7 +267,7 @@ printf("Length='%i', MAX_CANON='%i'\n", len, MAX_CANON);
 						c_pid = fork();
 						if (c_pid == 0) { // Child process success
 							printf("Executing %s\n", command);
-							if (execve(command, commandAndArgs, environ) == -1) printf("%s: Command not found.\n", command);
+							if (execve(command, new_commandAndArgs, environ) == -1) printf("%s: Command not found.\n", command);
 						} else if (c_pid > 0) { // Parent process success
 							int status;
 //printf("timeout='%i'\n", timeout);
@@ -303,7 +301,7 @@ printf("Length='%i', MAX_CANON='%i'\n", len, MAX_CANON);
 					c_pid = fork();
 					if (c_pid == 0) { // Child process success
 						printf("Executing %s at %s\n", command, commandPath);
-						if (execve(commandPath, commandAndArgs, environ) == -1) printf("%s: Command not found.\n", commandPath);
+						if (execve(commandPath, new_commandAndArgs, environ) == -1) printf("%s: Command not found.\n", commandPath);
 					} else if (c_pid > 0) { // Parent process success
 						int status;
 //printf("timeout='%i'\n", timeout);
@@ -324,9 +322,30 @@ printf("Length='%i', MAX_CANON='%i'\n", len, MAX_CANON);
 } /* sh() */
 
 
-char** expandWildcards(char **args) {
-	if (args == NULL) return NULL;
-	return args;
+// Assuming there is a command and at least one arg in commandAndArgs
+char** expandWildcards(char **commandAndArgs) {
+	char **args_p = commandAndArgs+1;											// points to first argument
+	char **glob_args;																			// Glob array pointer
+	char **new_commandAndArgs = malloc(2*sizeof(char*));	// New args to be returned
+	new_commandAndArgs[0] = malloc((strlen(commandAndArgs[0])+1)*sizeof(char));
+	strcpy(new_commandAndArgs[0], commandAndArgs[0]);
+	glob_t *arg_paths = malloc(sizeof(glob_t));						// Returned paths by glob
+	int i = 1;
+	while (*args_p) {
+		if (glob(*args_p, 0, NULL, arg_paths) == 0) { // 0?, NULL?
+			for (glob_args = arg_paths->gl_pathv; *glob_args != NULL; glob_args++, i++) {
+				//printf("NewArg='%s'\n", *glob_args);
+				// Args
+				new_commandAndArgs = realloc(new_commandAndArgs, (i+2)*sizeof(char*));
+				new_commandAndArgs[i] = malloc((strlen(*glob_args)+1)*sizeof(char));
+				strcpy(new_commandAndArgs[i], *glob_args);
+			}
+			globfree(arg_paths);
+		}
+		args_p++;
+	}
+	new_commandAndArgs[i] = 0;
+	return new_commandAndArgs;
 }
 
 int isAbsolutePath(char *command) {

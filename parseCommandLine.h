@@ -4,6 +4,9 @@
 //     -> http://stackoverflow.com/a/14667564/5171749
 
 
+char** getArgv(char *command_line);
+void freeArgv(char **argv);
+
 /* Get the number of tokens in the command line string.
  *   Parameters:
  *     string - commandLine
