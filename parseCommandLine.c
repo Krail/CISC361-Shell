@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <limits.h>
 #include <string.h>
+#include <glob.h>
 
 #include "./parseCommandLine.h"
 
@@ -13,7 +14,8 @@
 char** getArgv(char *command_line) {
 	// Definitions
 	const char *deliminator = " ";
-	char *token, *copy_command_line = malloc((strlen(command_line)+1)*sizeof(char));
+	char *token,
+			 *copy_command_line = malloc((strlen(command_line)+1)*sizeof(char));
 
 	strcpy(copy_command_line, command_line);
 	token = strtok(copy_command_line, deliminator);
@@ -22,28 +24,44 @@ char** getArgv(char *command_line) {
 		free(copy_command_line);
 		return NULL;
 	}
+//printf("firsttoken='%s'\n", token);
 
-	char **glob_args, **argv = malloc(2*sizeof(char*));
-	int i = 1;
+	int glob_result, i = 1;
+	char **glob_args,
+			 **argv = malloc(2*sizeof(char*));
 	glob_t *arg_paths = malloc(sizeof(glob_t));
 
 	argv[0] = malloc((strlen(token)+1)*sizeof(char)); // command is special
-	strcpy(argv[0], command_line);
-	token = strtok(NULL, delim);
+	strcpy(argv[0], token);
+//printf("command=argv[0]='%s'\n", argv[0]);
+	token = strtok(NULL, deliminator);
 	while (token != NULL) {
-		if (glob(token, 0, NULL, arg_paths) == 0) {
-			for (glob_args = arg_paths->gl_pathv; *glob_args != NULL; glob_args++, i++) {
+//printf("token='%s'\n", token);
+		glob_result = glob(token, 0, NULL, arg_paths);
+		if (glob_result == 0) {
+			for (glob_args = arg_paths->gl_pathv; *glob_args != NULL; glob_args++) {
 				// Args
 				argv = realloc(argv, (i+2)*sizeof(char*));
 				argv[i] = malloc((strlen(*glob_args)+1)*sizeof(char));
 				strcpy(argv[i], *glob_args);
+//printf("args[%i]=argv[%i]='%s'\n", i-1, i, argv[i]);
+				i++;
 			}
 			globfree(arg_paths);
+		} else if (glob_result == GLOB_NOMATCH) {
+			argv = realloc(argv, (i+2)*sizeof(char*));
+			argv[i] = malloc((strlen(token)+1)*sizeof(char));
+			strcpy(argv[i], token);
+//printf("args[%i]=argv[%i]='%s'\n", i-1, i, argv[i]);
+			i++;
 		}
-		token = strtok(NULL, delim);		
+		token = strtok(NULL, deliminator);		
 	}
+//printf("length='%i'\n", i);
 	argv[i] = NULL;
-	free(copy_command_line); free(); free(arg_paths);
+//if (argv[i] == NULL) printf("argv[%i]='%s'\n", i, argv[i]);
+//else printf("NOT NULL");
+	free(copy_command_line); free(arg_paths);
 	return argv;
 }
 
@@ -136,7 +154,7 @@ char** buildStringArray(char *commandLine, int numTokens) {
   return commandAndArgs;
 }
 
-
+/*
 char** expandWildcards(char **commandAndArgs) {
 	char **args_p = commandAndArgs+1;                     // points to first argument
 	char **glob_args;                                     // Glob array pointer
@@ -160,7 +178,7 @@ char** expandWildcards(char **commandAndArgs) {
   }
   new_commandAndArgs[i] = 0;
   return new_commandAndArgs;
-}
+}*/
 
 
 /* Get the command in commandAndArgs
@@ -175,9 +193,9 @@ char** expandWildcards(char **commandAndArgs) {
  *                  the command in commandAndArgs
  * Verified no memory leaks.
  */
-char * getCommand(char **commandAndArgs, int numTokens) {
-  if (numTokens == 0) return NULL;
-  return commandAndArgs[0];
+char* getCommand(char **argv) {
+  if (argv == NULL) return NULL;
+  return argv[0];
 }
 
 
@@ -193,9 +211,9 @@ char * getCommand(char **commandAndArgs, int numTokens) {
  *                  the arguments in commandAndArgs
  * Verified no memory leaks.
  */
-char ** getArgs(char **commandAndArgs, int numTokens) {
-  if (numTokens == 0 || numTokens == 1) return NULL;
-  return (&commandAndArgs[1]); // return pointer to second element
+char ** getArgs(char **argv) {
+  if (argv == NULL || *(argv+1) == NULL) return NULL;
+  return (argv+1); // return pointer to second element
 }                              // that's the first arg
 
 
@@ -219,8 +237,14 @@ void freeStringArray(char ** commandAndArgs, int numTokens) {
 
 void freeArgv(char **argv) {
 	if (argv == NULL) return;
-	char **argv_p;
-	while (*(argv_p++)) free(*argv_p);
+	char **argv_p = argv;
+//printf("first: '%s'\n", *argv_p);
+	//while (*(argv_p++)) free(*argv_p);
+	while (*argv_p) {
+//printf("free: '%s'\n", *argv_p);
+		free(*argv_p);
+		argv_p++;
+	}
 	free(argv);
 }
 

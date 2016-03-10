@@ -59,7 +59,7 @@ char** getCommandAndArgs(char *commandLine, int numTokens);
  *                  the command in commandAndArgs
  * Verified no memory leaks.
  */
-char* getCommand(char **commandAndArgs, int numTokens);
+char* getCommand(char **argv);
 
 
 /* Get the arguments in commandAndArgs
@@ -74,7 +74,7 @@ char* getCommand(char **commandAndArgs, int numTokens);
  *                  the arguments in commandAndArgs
  * Verified no memory leaks.
  */
-char** getArgs(char **commandAndArgs, int numTokens);
+char** getArgs(char **argv);
 
 
 /* Free up the string array of the command and its arguments

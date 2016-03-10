@@ -27,7 +27,7 @@ int main( int argc, char **argv, char **envp ) {
 void sig_handler(int signal) {
   /* define your signal handler */
 	switch (signal) {
-    case SIGINT:										// Ctrl-C
+    case SIGINT:										// Ctrl-C aka Kill(2)
 			if (c_pid > 0) {
 				printf("\n");
 				kill(c_pid, SIGINT);
@@ -37,8 +37,12 @@ void sig_handler(int signal) {
 //			printf("Alarm for %i!\n", c_pid);
 			if (c_pid > 0) {
 				printf("!!! Taking too long to execute this command !!!\n");
-				kill(c_pid, SIGINT);
+				kill(c_pid, SIGKILL);
 			}
+			break;
+		case SIGKILL:										// Kill (9)
+			if (c_pid > 0) kill(c_pid, SIGKILL);
+			// call sh function to free all vars
 	}
 }
 

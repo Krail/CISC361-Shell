@@ -30,8 +30,8 @@ int sh(int argc, char **argv, char **envp) {
   char *command, *arg, *commandPath, *p, *owd, *cwd, *pwd;
 
   char **command_history = malloc(sizeof(*command_history));
-  char **commandAndArgs, **args;
-  int go = 1;
+  char **commandAndArgs, **args, **my_argv;
+	int go = 1;
   int num_history = 0;
   int uid, i, status, argsct, numTokens;
 
@@ -80,12 +80,16 @@ int sh(int argc, char **argv, char **envp) {
 		commandLine[strlen(commandLine)-1] = '\0'; // Replace newline with null terminator
 
     // parseCommandLine.h functions
-    numTokens = getNumTokens(commandLine);
-    commandAndArgs = buildStringArray(commandLine, numTokens); // must be freed properly
-    command = getCommand(commandAndArgs, numTokens);
-    args = getArgs(commandAndArgs, numTokens);
+    //numTokens = getNumTokens(commandLine);
+    //commandAndArgs = buildStringArray(commandLine, numTokens); // must be freed properly
+    //command = getCommand(commandAndArgs, numTokens);
+    //args = getArgs(commandAndArgs, numTokens);
 
-		char **new_commandAndArgs = expandWildcards(commandAndArgs);
+		my_argv = getArgv(commandLine);
+		command = getCommand(my_argv);
+		args = getArgs(my_argv);
+
+		//char **new_commandAndArgs = expandWildcards(commandAndArgs);
 
 //printf("commandLine='%s',numTokens='%i',commandAndArgs='%p',command='%s'\n", commandLine, numTokens, commandAndArgs, command);
 
@@ -101,19 +105,24 @@ int sh(int argc, char **argv, char **envp) {
     else if (strcmp(command, "alias") == 0) {					/* alias */
 			printf("Executing built-in %s\n", command);
       if (args == NULL) printAliasTable(alias_head);
-      else if (numTokens == 2) {
-        char *alias_command = getAlias(alias_head, args[0]);
+//      else if (numTokens == 2) {
+			else if (args[1] == NULL) {	// only one arg...
+				char *alias_command = getAlias(alias_head, args[0]);
         if (alias_command != NULL) printf("%s\n", alias_command);
-      } else {
+      } else {										// multiple args
         char *alias_command = calloc(MAX_CANON, sizeof(char));
         strcpy(alias_command, args[1]);
-int len = strlen(args[1]);
-				for (i = 2; i < numTokens-1; i++) {
-          strcat(alias_command, " ");
-          strcat(alias_command, args[i]);
-len += 1 + strlen(args[i]);
+				if (args[2] != NULL) {
+//int len = strlen(args[1]);
+//				for (i = 2; i < numTokens-1; i++) {
+					char **args_p = args+2;
+					for (i = 2; *args_p; i++, args_p++) {
+						strcat(alias_command, " ");
+						strcat(alias_command, args[i]);
+//len += 1 + strlen(args[i]);
+					}
 				}
-printf("Length='%i', MAX_CANON='%i'\n", len, MAX_CANON);
+//printf("Length='%i', MAX_CANON='%i'\n", len, MAX_CANON);
 				alias_head = setAlias(alias_head, args[0], alias_command);
         free(alias_command);
       }
@@ -121,14 +130,15 @@ printf("Length='%i', MAX_CANON='%i'\n", len, MAX_CANON);
 			printf("Executing built-in %s\n", command);
 			char *twd = calloc(strlen(cwd) + 1, sizeof(char));
       strcpy(twd, cwd);
-      if (args == NULL || strcmp(args[0], "~") == 0) {
+			if (args != NULL && args[1] != NULL) printf("%s: Too many arguments.\n", command); // too many args
+			else if (args == NULL || strcmp(args[0], "~") == 0) {	// there's no arguments or only argument is a tilde
         if (pwd == NULL) pwd = calloc(PATH_MAX+1, sizeof(char));
         char *home = getenv("HOME");
         if (chdir(home) == 0) {
           strcpy(cwd, home);
           strcpy(pwd, twd);
         }
-      } else if (strcmp(args[0], "-") == 0) {
+      } else if (strcmp(args[0], "-") == 0) {		// only argument is a hyphen
         if (pwd == NULL) printf("No previous directory\n");
         else {
 					if (chdir(pwd) == 0) {
@@ -136,9 +146,8 @@ printf("Length='%i', MAX_CANON='%i'\n", len, MAX_CANON);
 						strcpy(pwd, twd);
 					}
         }
-			} else if (numTokens > 2) {
-				printf("%s: Too many arguments.\n", command);
-      } else {
+//			} else if (numTokens > 2) {
+			} else {												// only argument is not a tilde or a hyphen
 				if (pwd == NULL) pwd = calloc(PATH_MAX+1, sizeof(char));
         if (chdir(args[0]) == 0) {
           cwd = getcwd(cwd, PATH_MAX+1);
@@ -149,9 +158,13 @@ printf("Length='%i', MAX_CANON='%i'\n", len, MAX_CANON);
     } else if (strcmp(command, "exit") == 0) {					/* exit */
 			printf("Executing built-in %s\n", command);
       printf("exit\n");
-      if (numTokens == 1 || numTokens == 2) {
-        int status = numTokens == 1 ? 0 : atoi(args[0]);
-        freeStringArray(commandAndArgs, numTokens); // freed
+//      if (numTokens == 1 || numTokens == 2) {
+			if (args == NULL || args[1] == NULL) {		// 0 or 1 argument
+//if (args == NULL) printf("NULL\n");
+//else printf("'%s'\n", args[0]);
+				int status = args == NULL ? 0 : atoi(args[0]);
+        //freeStringArray(commandAndArgs, numTokens); // freed
+				freeArgv(my_argv);
         freePathList(pathList);
         free(pwd);
         free(cwd);
@@ -173,32 +186,38 @@ printf("Length='%i', MAX_CANON='%i'\n", len, MAX_CANON);
     } else if (strcmp(command, "kill") == 0) {					/* kill */
 			printf("Executing built-in %s\n", command);
       if (args == NULL) printf("kill: usage: kill [-signum] pid\n");
-      else if (numTokens == 2) {
-        const int pid = atoi(args[0]);
+//      else if (numTokens == 2) {
+			else if (args[1] == NULL) {			// only one argument
+				const int pid = atoi(args[0]);
         if (kill(pid, SIGTERM) == -1)
             printf("kill: (%i) - No such process\n", pid);
       } else {
 				int signum = atoi(args[0]+1);
 //printf("SigNum='%i'\n", signum);
 				if (signum > 31) signum = 0;
-				for (i = 1; i < numTokens-1; i++) {
-          const int pid = atoi(args[i]);
+//				for (i = 1; i < numTokens-1; i++) {
+				char **args_p = args+1;
+				for (i = 1; *args_p; i++) {
+					const int pid = atoi(args[i]);
           if (kill(pid, signum) == -1)
               printf("kill: (%i) - No such process\n", pid);
+					args_p++;
         }
       }
     } else if (strcmp(command, "list") == 0) {					/* list */
 			printf("Executing built-in %s\n", command);
       if (args == NULL) list(cwd);
-      else {
-        if (numTokens == 2) list(args[0]);
-        else {
-          for (i = 0; i < numTokens-1; i++) {
-						printf("%s:\n", args[i]);
-            list(args[i]);
-            if (i != numTokens-2) printf("\n"); // blank space between each dir
-          }
-        }
+      else if (args[1] == NULL) list(args[0]); // only one arg
+			else {	// at least 2 arguments...
+//          for (i = 0; i < numTokens-1; i++) {
+				char **args_p = args;
+				for (i = 0; *args_p; i++) {
+					printf("%s:\n", args[i]);
+					list(args[i]);
+//            if (i != numTokens-2) printf("\n"); // blank space between each dir
+					if (args[i+1] != NULL) printf("\n");
+					args_p++;
+				}
       }
     } else if (strcmp(command, "pid") == 0) {					/* pid */
 			printf("Executing built-in %s\n", command);
@@ -208,8 +227,9 @@ printf("Length='%i', MAX_CANON='%i'\n", len, MAX_CANON);
       if (args == NULL) {
         char **env;
         for (env = environ; *env != 0; env++) printf("%s\n", *env);
-      } else if (numTokens == 2) {
-        char *env = getenv(args[0]);
+//      } else if (numTokens == 2) {
+			} else if (args[1] == NULL) {			// only one argument
+				char *env = getenv(args[0]);
         if (env != NULL) printf("%s\n", env);
       } else printf("printenv: Too many arguments.\n");
     } else if (strcmp(command, "prompt") == 0) {				/* prompt */
@@ -229,14 +249,16 @@ printf("Length='%i', MAX_CANON='%i'\n", len, MAX_CANON);
       if (args == NULL) { // no arguments, print all environment variables
         char **env;
         for (env = environ; *env != 0; env++) printf("%s\n", *env);
-      } else if (numTokens == 2) { // one argument, set env variable to blank
-        setenv(args[0], "", 1); // overwrite set
+//      } else if (numTokens == 2) { // one argument, set env variable to blank
+			} else if (args[1] == NULL) {	 // one argument	
+					setenv(args[0], "", 1); // overwrite set
         if (strcmp(args[0], "PATH") == 0) {
 					freePathList(pathList);
 					pathList = get_path();
 				}
-			} else if (numTokens == 3) { // two arguments, set env variable to value
-        setenv(args[0], args[1], 1); // overwrite set
+//			} else if (numTokens == 3) { // two arguments, set env variable to value
+			} else if (args[2] == NULL) {			// two arguments
+				setenv(args[0], args[1], 1); // overwrite set
 				if (strcmp(args[0], "PATH") == 0) {
 					freePathList(pathList);
 					pathList = get_path();
@@ -244,17 +266,25 @@ printf("Length='%i', MAX_CANON='%i'\n", len, MAX_CANON);
 			} else printf("setenv: Too many arguments.\n"); // too many arguments (0-2)
     } else if (strcmp(command, "where") == 0) {					/* where */
 			printf("Executing built-in %s\n", command);
-      for (i = 0; i < numTokens-1; i++) where(args[i], pathList);
-    } else if (strcmp(command, "which") == 0) {					/* which */
+//      for (i = 0; i < numTokens-1; i++) where(args[i], pathList);
+			if (args !=	NULL) {
+				char **args_p = args;
+				for (i = 0; *(args_p++); i++) where(args[i], pathList);
+			}
+		} else if (strcmp(command, "which") == 0) {					/* which */
 			printf("Executing built-in %s\n", command);
-      char *path;
-      for (i = 0; i < numTokens-1; i++) {
-        path = which(args[i], pathList);
-        if (path != NULL) {
-          printf("%s\n", path);
-          free(path);
-        }
-      }
+			if (args != NULL) {
+				char *path;
+//				for (i = 0; i < numTokens-1; i++) {
+				char **args_p = args;
+				for (i = 0; *(args_p++); i++) {
+					path = which(args[i], pathList);
+					if (path != NULL) {
+						printf("%s\n", path);
+						free(path);
+					}
+				}
+			}
     } else { /* else program to exec */
 			if (isAbsolutePath(command) == 0) {
 				if (access(command, F_OK) == 0) {
@@ -267,7 +297,7 @@ printf("Length='%i', MAX_CANON='%i'\n", len, MAX_CANON);
 						c_pid = fork();
 						if (c_pid == 0) { // Child process success
 							printf("Executing %s\n", command);
-							if (execve(command, new_commandAndArgs, environ) == -1) printf("%s: Command not found.\n", command);
+							if (execve(command, my_argv, environ) == -1) printf("%s: Command not found.\n", command);
 						} else if (c_pid > 0) { // Parent process success
 							int status;
 //printf("timeout='%i'\n", timeout);
@@ -301,7 +331,7 @@ printf("Length='%i', MAX_CANON='%i'\n", len, MAX_CANON);
 					c_pid = fork();
 					if (c_pid == 0) { // Child process success
 						printf("Executing %s at %s\n", command, commandPath);
-						if (execve(commandPath, new_commandAndArgs, environ) == -1) printf("%s: Command not found.\n", commandPath);
+						if (execve(commandPath, my_argv, environ) == -1) printf("%s: Command not found.\n", commandPath);
 					} else if (c_pid > 0) { // Parent process success
 						int status;
 //printf("timeout='%i'\n", timeout);
@@ -316,7 +346,8 @@ printf("Length='%i', MAX_CANON='%i'\n", len, MAX_CANON);
         free(commandPath);
       }
     }
-    freeStringArray(commandAndArgs, numTokens); // freed
+    //freeStringArray(commandAndArgs, numTokens); // freed
+		freeArgv(my_argv);
   }									/* End of control loop */
   return 0;
 } /* sh() */
