@@ -31,19 +31,15 @@ struct pathelement *get_path() {
 	}
 
 	do {		/* loop through the PATH to build a linked list of dirs */
-    if ( !pathlist )		/* create head of list */
-    {
+    if (!pathlist) {		/* create head of list */
       tmp = calloc(1, sizeof(struct pathelement));
       pathlist = tmp;
-    }
-    else			/* add on next element */
-    {
+    } else {			/* add on next element */
       tmp->next = calloc(1, sizeof(struct pathelement));
       tmp = tmp->next;
     }
     tmp->element = calloc(strlen(p) + 1, sizeof(char));
     strcpy(tmp->element, p);
-//    tmp->element = p;
     tmp->next = NULL;
   } while ( p = strtok(NULL, ":") );
 

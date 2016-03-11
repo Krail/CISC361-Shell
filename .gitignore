@@ -6,3 +6,6 @@
 *.o
 /mysh
 
+# Test data
+/testrun.txt
+

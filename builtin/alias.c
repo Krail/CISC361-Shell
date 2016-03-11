@@ -6,6 +6,7 @@
 #include "alias.h"
 
 
+/* Print the given alias table */
 void printAliasTable(struct alias *head) {
   struct alias *node = head;
   while (node != NULL) {
@@ -14,15 +15,19 @@ void printAliasTable(struct alias *head) {
   }
 }
 
+/* Get aliased command */
 char* getAlias(struct alias *head, const char *alias_match) {
   struct alias *node = head;
   while (node != NULL) {
-    if (strcmp(node->alias, alias_match) == 0) return node->command;
+		// Match?
+		if (strcmp(node->alias, alias_match) == 0) return node->command;
     node = node->next;
   }
+	// No alias found with that name
   return NULL;
 }
 
+/* Set command to this alias, overwrite if needed */
 struct alias* setAlias(struct alias *head, const char *alias, const char *command) {
   struct alias *node = head;
   struct alias *new_node = malloc(sizeof(struct alias));
@@ -31,9 +36,10 @@ struct alias* setAlias(struct alias *head, const char *alias, const char *comman
   new_node->command = malloc((strlen(command)+1)*sizeof(char));
   strcpy(new_node->command, command);
   new_node->next = NULL;
-  if (node == NULL) head = new_node;
+  if (head == NULL) head = new_node;
   else {
     while (node->next != NULL) {
+			// Match?
       if (strcmp(node->alias, alias) == 0) {
         free(node->command);
         node->command = new_node->command;
@@ -43,6 +49,7 @@ struct alias* setAlias(struct alias *head, const char *alias, const char *comman
       }
       node = node->next;
     }
+		// Need to check again for last node
     if (strcmp(node->alias, alias) == 0) {
       free(node->command);
       node->command = new_node->command;
@@ -52,9 +59,11 @@ struct alias* setAlias(struct alias *head, const char *alias, const char *comman
     }
     node->next = new_node;
   }
+	// Return head
   return head;
 }
 
+/* Free alias table */
 void freeAliasTable(struct alias *head) {
   struct alias *node = head;
 	struct alias *tmp;

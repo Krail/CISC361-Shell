@@ -33,7 +33,7 @@ void sig_handler(int signal) {
 				kill(c_pid, SIGINT);
 			}
 			break;
-		case SIGALRM:
+		case SIGALRM:										// Alarm signal (extra credit)
 //			printf("Alarm for %i!\n", c_pid);
 			if (c_pid > 0) {
 				printf("!!! Taking too long to execute this command !!!\n");
@@ -42,7 +42,7 @@ void sig_handler(int signal) {
 			break;
 		case SIGKILL:										// Kill (9)
 			if (c_pid > 0) kill(c_pid, SIGKILL);
-			// call sh function to free all vars
+			// call sh function's variables are not freed!!!
 	}
 }
 

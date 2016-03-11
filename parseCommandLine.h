@@ -4,89 +4,51 @@
 //     -> http://stackoverflow.com/a/14667564/5171749
 
 
-char** getArgv(char *command_line);
-void freeArgv(char **argv);
 
-/* Get the number of tokens in the command line string.
- *   Parameters:
- *     string - commandLine
- *   Returns:
- *     int    - numTokens
- *                the number of tokens in commandLine
- *                including the command and its arguments
- * Verified no memory leaks.
+/* Alloc the string array of the comand and its arguments
+ *		Parameters:
+ *			string		- command_line
+ *		Returns:
+ *			string[]	- argv
+ *										string array of the command_line's
+ *										command and arguments
  */
-int getNumTokens(char *commandLine);
+char** allocArgv(char *command_line);
 
-/* Get the string array of the command and its arguments.
+
+/* Get the command in argv
  *   Parameters:
- *     string   - commandLine
- *     int      - numTokens
- *                  the number of tokens in commandLine
- *   Returns:
- *     string[] - commandAndArgs
+ *     string[] - argv
  *                  string array of the commandLine's
  *                  command and arguments
- * Verified no memory leaks.
- *   - Must free commandAndArgs's elements and itself when finished
- */
-char **buildStringArray(char *commandLine, int numTokens);
-
-/* Get the string array of the command and its arguments.
- *   Parameters:
- *     string   - commandLine
- *     int      - numTokens
- *                  the number of tokens in commandLine
- *   Returns:
- *     string[] - commandAndArgs
- *                  string array of the commandLine's
- *                  command and arguments
- * Verified no memory leaks.
- *   -> Must free commandAndArgs's elements and itself when finished!
- */
-char** getCommandAndArgs(char *commandLine, int numTokens);
-
-
-/* Get the command in commandAndArgs
- *   Parameters:
- *     string[] - commandAndArgs
- *                  string array of the commandLine's
- *                  command and arguments
- *     int      - numTokens
- *                  the number of tokens in commandLine
  *   Returns:
  *     string   - command
- *                  the command in commandAndArgs
+ *                  the command in argv
  * Verified no memory leaks.
  */
 char* getCommand(char **argv);
 
 
-/* Get the arguments in commandAndArgs
+/* Get the arguments in argv
  *   Parameters:
- *     string[] - commandAndArgs
+ *     string[] - argv
  *                  string array of the commandLine's
  *                  command and arguments
- *     int      - numTokens
- *                  the number of tokens in commandLine
  *   Returns:
  *     string   - args
- *                  the arguments in commandAndArgs
+ *                  the arguments in argv
  * Verified no memory leaks.
  */
 char** getArgs(char **argv);
 
-
-/* Free up the string array of the command and its arguments
- *   Parameters:
- *     string[] - commandAndArgs
- *                  string array of the commandLine's
- *                  command and arguments
- *     int      - numTokens
- *                  the number of tokens in commandLine
- *   Returns:
- *     void
+/* Free up argv of the command and its arguments
+ *		Parameters:
+ *    	string[] - argv
+ *     								string array of the command_line's
+ *                  	command and arguments
+ *		Returns:
+ *     	void
  * Verified no memory leaks.
  */
-void freeStringArray(char ** commandAndArgs, int numTokens);
+void freeArgv(char **argv);
 
